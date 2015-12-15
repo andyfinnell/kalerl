@@ -1,0 +1,15 @@
+%% @author Andrew J. Finnell
+%% @copyright 2015 Andrew J. Finnell.
+
+{application, kalerl, [
+    {description, "Kaleidoscope compiler targeting BEAM."},
+    {vsn, git },
+    {modules, []},
+    {registered, []},
+    {applications, [
+        kernel,
+        stdlib
+    ]},
+    {mod, { kalerl, []}}
+]}.
+
