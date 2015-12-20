@@ -16,17 +16,24 @@ main(Args) ->
 -spec execute(list()) -> ok.
 execute([Filename]) ->
   {ok, Contents} = file:read_file(filename:absname(Filename)),
-  process_lexing(kalerl_lexer:string(binary_to_list(Contents)));
+  Tokens = process_lexing(kalerl_lexer:string(binary_to_list(Contents))),
+  process_parse(kalerl_parser:parse(Tokens));
 execute(_Args) ->
 	usage().
 
 process_lexing({ok, Tokens, _EndLine}) ->
-	io:format("Tokens:~n"),
-  PrintToken = fun (Token) -> io:format("~p~n", [Token]) end,
-  lists:foreach(PrintToken, Tokens);
+  Tokens;
 process_lexing({error, ErrorInfo, Line}) ->
-	io:format("Error on line ~p: ~p ~n", [Line, ErrorInfo]).
+	io:format("Error on line ~p: ~p ~n", [Line, ErrorInfo]),
+  [].
 
+process_parse({ok, Result}) ->
+	io:format("AST:~n"),
+  io:format("~p~n", [Result]);
+process_parse({error, {Line, Module, Message}}) ->
+  ErrorString = Module:format_error(Message),
+	io:format("Error on line ~p: ~s ~n", [Line, ErrorString]).
+  
 -spec usage() -> ok.
 usage() ->
 	io:format("Usage: kalerl <path-to-compile>...~n"),

@@ -1,0 +1,14 @@
+# Define it
+def add(x)
+  x + 2
+
+def linear(y)
+  5 + y * 6
+  
+def linear2(z)
+  7 * z + 8
+
+# Use it
+add(3)
+linear(4)
+linear2(5)

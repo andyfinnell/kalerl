@@ -9,10 +9,12 @@ WHITESPACE = [\r\n\t\s]
 
 Rules.
 
-{LETTER}({LETTER}|{DIGIT})*  : {token, validate_ident(TokenLine, TokenChars)}.
+{LETTER}({LETTER}|{DIGIT})*   : {token, validate_ident(TokenLine, TokenChars)}.
 {DIGIT}+(\.{DIGIT}+)?         : {token, validate_number(TokenLine, TokenChars)}.
 {WHITESPACE}+                 : skip_token.
 #.*                           : skip_token. %% comments
+[\(\),]                       : {token, validate_char(TokenLine, TokenChars)}.
+.                             : {token, validate_operator(TokenLine, TokenChars)}.
 
 Erlang code.
 
@@ -20,8 +22,8 @@ Erlang code.
 -type kalerl_token() :: {def, lineno()} | {extern, lineno()} %% Commands
     %% Primary
     | {ident, lineno(), string()} | {number, lineno(), float()} 
-    %% Unknown
-    | {unknown, lineno(), string()}.
+    %% Special literal character
+    | {special, lineno(), char()}.
     
 
 -spec validate_ident(lineno(), string()) -> kalerl_token().
@@ -37,3 +39,9 @@ validate_number(Line, Characters) ->
     error:badarg ->
       {number, Line, float(list_to_integer(Characters))}
   end.
+
+-spec validate_operator(lineno(), string()) -> kalerl_token().
+validate_operator(Line, Chars) -> {operator, Line, list_to_atom(Chars)}.
+
+-spec validate_char(lineno(), string()) -> kalerl_token().
+validate_char(Line, Chars) -> {list_to_atom(Chars), Line}.
