@@ -16,7 +16,8 @@ file(Filename) ->
     Contents <- read_error(file:read_file(filename:absname(Filename))),
     Tokens <- lexer_error(kalerl_lexer:string(binary_to_list(Contents))),
     Toplevel <- parser_error(kalerl_parser:parse(Tokens)),
-    kalerl_parser:toplevel_to_module(Toplevel, filename:rootname(filename:basename(Filename)))
+    IRModule <- kalerl_parser:toplevel_to_module(Toplevel, filename:rootname(filename:basename(Filename))),
+    kalerl_codegen:module(IRModule)
   ]).
     
 %% Implementation
