@@ -18,6 +18,7 @@
 -type kalerl_proto() :: {prototype, string(), [string()]}.
 
 %% Function definition
--type kalerl_func() :: {function, kalerl_proto(), kalerl_expr()}.
+-type kalerl_func() :: {function, kalerl_proto(), [kalerl_expr()]}.
 
--export_type([kalerl_expr/0, kalerl_proto/0, kalerl_func/0]).
+-type kalerl_module() :: {module, string(), [kalerl_func() | kalerl_proto()]}.
+-export_type([kalerl_expr/0, kalerl_proto/0, kalerl_func/0, kalerl_module/0]).

@@ -14,25 +14,16 @@ main(Args) ->
 %% Implementation
 
 -spec execute(list()) -> ok.
-execute([Filename]) ->
-  {ok, Contents} = file:read_file(filename:absname(Filename)),
-  Tokens = process_lexing(kalerl_lexer:string(binary_to_list(Contents))),
-  process_parse(kalerl_parser:parse(Tokens));
+execute([Filename]) ->  
+  process_parse(kalerl_compiler:file(Filename));
 execute(_Args) ->
 	usage().
-
-process_lexing({ok, Tokens, _EndLine}) ->
-  Tokens;
-process_lexing({error, ErrorInfo, Line}) ->
-	io:format("Error on line ~p: ~p ~n", [Line, ErrorInfo]),
-  [].
 
 process_parse({ok, Result}) ->
 	io:format("AST:~n"),
   io:format("~p~n", [Result]);
-process_parse({error, {Line, Module, Message}}) ->
-  ErrorString = Module:format_error(Message),
-	io:format("Error on line ~p: ~s ~n", [Line, ErrorString]).
+process_parse({error, Line, Message}) ->
+	io:format("Error on line ~p: ~s ~n", [Line, Message]).
   
 -spec usage() -> ok.
 usage() ->

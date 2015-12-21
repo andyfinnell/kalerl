@@ -2,6 +2,8 @@
 -export([parse/1, parse_and_scan/1, format_error/1]).
 -file("src/kalerl_parser.yrl", 49).
 
+-export([toplevel_to_module/2]).
+
 unwrap({_,_,V}) -> V.
 
 -type binop() :: atom().
@@ -60,6 +62,17 @@ binop_precedence('*') -> 40.
 
 -spec binop_associate(binop()) -> left | right.
 binop_associate(_Op) -> left.
+
+-type toplevel() :: {toplevel, [kalerl_ast:kalerl_func() | kalerl_ast:kalerl_proto()], [kalerl_ast:kalerl_expr()]}.
+-spec toplevel_merge(toplevel(), toplevel()) -> toplevel().
+toplevel_merge({toplevel, NewFuncs, NewExprs}, {toplevel, ExistingFuncs, ExistingExprs}) ->
+  {toplevel, ExistingFuncs ++ NewFuncs, ExistingExprs ++ NewExprs}.
+  
+-spec toplevel_to_module(toplevel(), string()) -> {ok, kalerl_ast:kalerl_module()}.
+toplevel_to_module({toplevel, Funcs, MainExprs}, ModuleName) ->
+  Main = {function, {prototype, "main", []}, MainExprs},
+  {ok, {module, ModuleName, Funcs ++ [Main]}}.
+
 
 -file("/usr/local/lib/erlang/lib/parsetools-2.1.1/include/yeccpre.hrl", 0).
 %%
@@ -235,7 +248,7 @@ yecctoken2string(Other) ->
 
 
 
--file("src/kalerl_parser.erl", 238).
+-file("src/kalerl_parser.erl", 251).
 
 -dialyzer({nowarn_function, yeccpars2/7}).
 yeccpars2(0=S, Cat, Ss, Stack, T, Ts, Tzr) ->
@@ -341,8 +354,7 @@ yeccpars2_2(S, ident, Ss, Stack, T, Ts, Tzr) ->
 yeccpars2_2(S, number, Ss, Stack, T, Ts, Tzr) ->
  yeccpars1(S, 14, Ss, Stack, T, Ts, Tzr);
 yeccpars2_2(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
- NewStack = yeccpars2_2_(Stack),
- yeccgoto_toplevel_list(hd(Ss), Cat, Ss, NewStack, T, Ts, Tzr).
+ yeccgoto_toplevel_list(hd(Ss), Cat, Ss, Stack, T, Ts, Tzr).
 
 yeccpars2_3(S, operator, Ss, Stack, T, Ts, Tzr) ->
  yeccpars1(S, 34, Ss, Stack, T, Ts, Tzr);
@@ -359,13 +371,16 @@ yeccpars2_6(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
  yeccgoto_primary_expr(hd(Ss), Cat, Ss, Stack, T, Ts, Tzr).
 
 yeccpars2_7(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
- yeccgoto_toplevel(hd(Ss), Cat, Ss, Stack, T, Ts, Tzr).
+ NewStack = yeccpars2_7_(Stack),
+ yeccgoto_toplevel(hd(Ss), Cat, Ss, NewStack, T, Ts, Tzr).
 
 yeccpars2_8(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
- yeccgoto_toplevel(hd(Ss), Cat, Ss, Stack, T, Ts, Tzr).
+ NewStack = yeccpars2_8_(Stack),
+ yeccgoto_toplevel(hd(Ss), Cat, Ss, NewStack, T, Ts, Tzr).
 
 yeccpars2_9(_S, Cat, Ss, Stack, T, Ts, Tzr) ->
- yeccgoto_toplevel(hd(Ss), Cat, Ss, Stack, T, Ts, Tzr).
+ NewStack = yeccpars2_9_(Stack),
+ yeccgoto_toplevel(hd(Ss), Cat, Ss, NewStack, T, Ts, Tzr).
 
 -dialyzer({nowarn_function, yeccpars2_10/7}).
 yeccpars2_10(S, '(', Ss, Stack, T, Ts, Tzr) ->
@@ -640,12 +655,28 @@ yeccgoto_toplevel_list(0, Cat, Ss, Stack, T, Ts, Tzr) ->
 yeccgoto_toplevel_list(2=_S, Cat, Ss, Stack, T, Ts, Tzr) ->
  yeccpars2_37(_S, Cat, Ss, Stack, T, Ts, Tzr).
 
--compile({inline,yeccpars2_2_/1}).
--file("src/kalerl_parser.yrl", 7).
-yeccpars2_2_(__Stack0) ->
+-compile({inline,yeccpars2_7_/1}).
+-file("src/kalerl_parser.yrl", 12).
+yeccpars2_7_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
-   [ __1 ]
+   { toplevel , [ __1 ] , [ ] }
+  end | __Stack].
+
+-compile({inline,yeccpars2_8_/1}).
+-file("src/kalerl_parser.yrl", 10).
+yeccpars2_8_(__Stack0) ->
+ [__1 | __Stack] = __Stack0,
+ [begin
+   { toplevel , [ ] , [ __1 ] }
+  end | __Stack].
+
+-compile({inline,yeccpars2_9_/1}).
+-file("src/kalerl_parser.yrl", 11).
+yeccpars2_9_(__Stack0) ->
+ [__1 | __Stack] = __Stack0,
+ [begin
+   { toplevel , [ __1 ] , [ ] }
   end | __Stack].
 
 -compile({inline,yeccpars2_13_/1}).
@@ -745,7 +776,7 @@ yeccpars2_27_(__Stack0) ->
 yeccpars2_29_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
-   { function , __2 , __3 }
+   { function , __2 , [ __3 ] }
   end | __Stack].
 
 -compile({inline,yeccpars2_31_/1}).
@@ -793,8 +824,8 @@ yeccpars2_36_(__Stack0) ->
 yeccpars2_37_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
-   [ __1 | __2 ]
+   toplevel_merge ( __1 , __2 )
   end | __Stack].
 
 
--file("src/kalerl_parser.yrl", 109).
+-file("src/kalerl_parser.yrl", 122).

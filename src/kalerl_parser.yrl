@@ -8,12 +8,12 @@ operator def extern ident number.
 
 Rootsymbol toplevel_list.
 
-toplevel_list -> toplevel                 : ['$1'].
-toplevel_list -> toplevel toplevel_list   : ['$1' | '$2'].
+toplevel_list -> toplevel                 : '$1'.
+toplevel_list -> toplevel toplevel_list   : toplevel_merge('$1', '$2').
 
-toplevel -> expression                    : '$1'.
-toplevel -> definition                    : '$1'.
-toplevel -> external                      : '$1'.
+toplevel -> expression                    : {toplevel, [], ['$1']}.
+toplevel -> definition                    : {toplevel, ['$1'], []}.
+toplevel -> external                      : {toplevel, ['$1'], []}.
 
 expression -> primary_expr                : '$1'.
 expression -> primary_expr bin_op_rhs_list : binop_finalize(binop_shunt(binop_push_expr('$1', '$2'))).
@@ -42,11 +42,13 @@ prototype -> ident '(' identifier_list ')'  : {prototype, unwrap('$1'), '$3'}.
 identifier_list -> ident identifier_list    : [unwrap('$1') | '$2'].
 identifier_list -> '$empty'                 : [].
 
-definition -> def prototype expression      : {function, '$2', '$3'}.
+definition -> def prototype expression      : {function, '$2', ['$3']}.
 
 external -> extern prototype                : '$2'.
 
 Erlang code.
+
+-export([toplevel_to_module/2]).
 
 unwrap({_,_,V}) -> V.
 
@@ -106,3 +108,14 @@ binop_precedence('*') -> 40.
 
 -spec binop_associate(binop()) -> left | right.
 binop_associate(_Op) -> left.
+
+-type toplevel() :: {toplevel, [kalerl_ast:kalerl_func() | kalerl_ast:kalerl_proto()], [kalerl_ast:kalerl_expr()]}.
+-spec toplevel_merge(toplevel(), toplevel()) -> toplevel().
+toplevel_merge({toplevel, NewFuncs, NewExprs}, {toplevel, ExistingFuncs, ExistingExprs}) ->
+  {toplevel, ExistingFuncs ++ NewFuncs, ExistingExprs ++ NewExprs}.
+  
+-spec toplevel_to_module(toplevel(), string()) -> {ok, kalerl_ast:kalerl_module()}.
+toplevel_to_module({toplevel, Funcs, MainExprs}, ModuleName) ->
+  Main = {function, {prototype, "main", []}, MainExprs},
+  {ok, {module, ModuleName, Funcs ++ [Main]}}.
+
