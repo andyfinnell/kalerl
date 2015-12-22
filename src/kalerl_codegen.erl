@@ -49,10 +49,5 @@ operator(Op) ->
   %% For now, there's a 1:1 correspondence
   Op.
   
-%% TODO: symbol checking:
-%%  - duplicate parameter names
-%%  - undefined symbols used in exprs
-%%  - duplicate function names (with same arity)
 %% TODO: code generation
 %%  - gen the -spec forms
-%%  - gen correct line numbers

@@ -15,7 +15,8 @@ file(Filename) ->
     Tokens <- lexer_error(kalerl_lexer:string(binary_to_list(Contents)), Filename),
     Toplevel <- parser_error(kalerl_parser:parse(Tokens), Filename),
     IRModule <- kalerl_parser:toplevel_to_module(Toplevel, filename:rootname(filename:basename(Filename))),
-    AbsForms <- kalerl_codegen:module(IRModule),
+    IRModule2 <- symbolcheck_error(kalerl_symbolcheck:module(IRModule), Filename),
+    AbsForms <- kalerl_codegen:module(IRModule2),
     kalerl_binarygen:forms(AbsForms)
   ]).
 
@@ -25,16 +26,21 @@ format_error(file_not_found) ->
 %% Implementation
 
 read_error({error, _Reason}, Filename) ->
-  {error, [{Filename, [{none, ?MODULE, file_not_found}]}], []};
+  {error, {[{Filename, [{none, ?MODULE, file_not_found}]}], []}};
 read_error(Passthrough, _Filename) ->
   Passthrough.
 
 lexer_error({ok, Tokens, _EndLine}, _Filename) ->
   {ok, Tokens};
 lexer_error(ErrorInfo, Filename) ->
-  {error, [{Filename, [ErrorInfo]}], []}.
+  {error, {[{Filename, [ErrorInfo]}], []}}.
   
 parser_error({error, ErrorInfo}, Filename) ->
-  {error, [{Filename, [ErrorInfo]}], []};
+  {error, {[{Filename, [ErrorInfo]}], []}};
 parser_error(Passthrough, _Filename) ->
+  Passthrough.
+
+symbolcheck_error({error, Errors, Warnings}, Filename) ->
+  {error, {[{Filename, Errors}], [{Filename, Warnings}]}};
+symbolcheck_error(Passthrough, _Filename) ->
   Passthrough.

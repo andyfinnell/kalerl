@@ -20,6 +20,6 @@ process_binary({ok,ModuleName,BinaryOrCode}) ->
 process_binary(Ret = {ok, _ModuleName, _BinaryOrCode, _Warnings}) ->
   Ret;
 process_binary(error) ->
-  {error, [{"<<internal>>", [{none, ?MODULE, unknown}]}], []};  
-process_binary(Ret = {error, _Errors, _Warnings}) ->
-  Ret.
+  {error, {[{"<<internal>>", [{none, ?MODULE, unknown}]}], []}};
+process_binary({error, Errors, Warnings}) ->
+  {error, {Errors, Warnings}}.

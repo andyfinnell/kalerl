@@ -1,0 +1,21 @@
+# Define it
+def add(x)
+  x + 2 + y
+
+def linear(y)
+  5 + y * 6
+  
+def linear2(z)
+  7 * z + 8
+
+def dup(z y z)
+  7 * z + 8 * y
+
+def linear(w)
+  5 + 6
+
+# Use it
+add(3)
+linear(4)
+linear2(5, 2)
+jimbob()

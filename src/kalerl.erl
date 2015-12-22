@@ -23,7 +23,7 @@ process_parse({ok, ModuleName, Binary, Warnings}, Filename) ->
   ok = write_beam(filename:dirname(Filename), ModuleName, Binary),
   io:format("Success: ~p~n", [ModuleName]),
   print_errors(Warnings, "Warning", Filename);
-process_parse({error, Errors, Warnings}, Filename) ->
+process_parse({error, {Errors, Warnings}}, Filename) ->
   io:format("Failure~n"),
   print_errors(Errors, "Error", Filename),
   print_errors(Warnings, "Warning", Filename).
@@ -38,7 +38,7 @@ print_error({_Filename, ErrorInfos}, Type, Filename) ->
   
 print_error_info({Line, Module, Descriptor}, Type, Filename) ->
   ErrorString = Module:format_error(Descriptor),
-  io:format("~s:~p ~s\t~s~n", [Filename, Line, Type, ErrorString]).
+  io:format("~s:~p: ~s: ~s~n", [Filename, Line, Type, ErrorString]).
 
 write_beam(Dirname, ModuleName, Binary) ->
   Filename = filename:join(Dirname, string:concat(atom_to_list(ModuleName), ".beam")),
