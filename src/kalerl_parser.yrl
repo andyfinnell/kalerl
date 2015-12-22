@@ -22,27 +22,27 @@ primary_expr -> identifier_expr             : '$1'.
 primary_expr -> number_expr                 : '$1'.
 primary_expr -> paren_expr                  : '$1'.
 
-number_expr -> number                       : {number, unwrap('$1')}.
+number_expr -> number                       : {number, line('$1'), unwrap('$1')}.
 
 paren_expr -> '(' expression ')'            : '$1'.
 
-identifier_expr -> ident                    : {variable, unwrap('$1')}.
-identifier_expr -> ident '(' argument_expr_list ')' : {call, unwrap('$1'), '$3'}.
+identifier_expr -> ident                    : {variable, line('$1'), unwrap('$1')}.
+identifier_expr -> ident '(' argument_expr_list ')' : {call, line('$1'), unwrap('$1'), '$3'}.
 
 argument_expr_list -> expression            : ['$1'].
 argument_expr_list -> expression ',' argument_expr_list : ['$1' | '$3'].
 argument_expr_list -> '$empty'              : [].
 
-bin_op_rhs -> operator primary_expr         : {unwrap('$1'), '$2'}.
+bin_op_rhs -> operator primary_expr         : {unwrap('$1'), line('$1'), '$2'}.
 bin_op_rhs_list -> bin_op_rhs               : binop_push_op('$1', {[], []}).
 bin_op_rhs_list -> bin_op_rhs bin_op_rhs_list : binop_shunt(binop_push_op('$1', '$2')).
 
-prototype -> ident '(' identifier_list ')'  : {prototype, unwrap('$1'), '$3'}.
+prototype -> ident '(' identifier_list ')'  : {prototype, line('$1'), unwrap('$1'), '$3'}.
 
-identifier_list -> ident identifier_list    : [unwrap('$1') | '$2'].
+identifier_list -> ident identifier_list    : [{variable, line('$1'), unwrap('$1')} | '$2'].
 identifier_list -> '$empty'                 : [].
 
-definition -> def prototype expression      : {function, '$2', ['$3']}.
+definition -> def prototype expression      : {function, line('$1'), '$2', ['$3']}.
 
 external -> extern prototype                : '$2'.
 
@@ -52,12 +52,15 @@ Erlang code.
 
 unwrap({_,_,V}) -> V.
 
--type binop() :: atom().
--type shunt_data() :: {[binop()], [kalerl_ast:kalerl_expr()]}.
+line({_,Line}) -> Line;
+line({_,Line,_}) -> Line.
 
--spec binop_push_op({binop(), kalerl_ast:kalerl_expr()}, shunt_data()) -> shunt_data().
-binop_push_op({Op, Expr}, {Ops, Exprs}) ->
-  {[Op | Ops], [Expr | Exprs]}.
+-type binop() :: atom().
+-type shunt_data() :: {[{binop(), integer()}], [kalerl_ast:kalerl_expr()]}.
+
+-spec binop_push_op({binop(), integer(), kalerl_ast:kalerl_expr()}, shunt_data()) -> shunt_data().
+binop_push_op({Op, Line, Expr}, {Ops, Exprs}) ->
+  {[{Op, Line} | Ops], [Expr | Exprs]}.
 
 -spec binop_push_expr(kalerl_ast:kalerl_expr(), shunt_data()) -> shunt_data().
 binop_push_expr(Expr, {Ops, Exprs}) ->
@@ -71,7 +74,7 @@ binop_pop_expr({_Ops, [Expr | _Exprs]}) ->
 binop_shunt(Data = {Ops, _OutputExprs}) when length(Ops) < 2 ->
   %% If only one operator, nothing to do
   Data;
-binop_shunt(Data = {[Op1 | [Op2 | _RestOps]], _OutputExprs}) ->
+binop_shunt(Data = {[{Op1, _Line1} | [{Op2, _Line2} | _RestOps]], _OutputExprs}) ->
   %% Shunting-yard algorithm, kinda
   case binop_should_shunt(Op1, Op2) of
     true -> binop_shunt(binop_do_shunt(Data));
@@ -79,8 +82,8 @@ binop_shunt(Data = {[Op1 | [Op2 | _RestOps]], _OutputExprs}) ->
   end.
 
 -spec binop_do_shunt(shunt_data()) -> shunt_data().
-binop_do_shunt({[Op1 | [Op2 | RestOps]], [Expr1 | [Expr2 | RestExprs]]}) ->
-  NewExpr = {binary, Op2, Expr1, Expr2},
+binop_do_shunt({[Op1 | [{Op2, Line2} | RestOps]], [Expr1 | [Expr2 | RestExprs]]}) ->
+  NewExpr = {binary, Line2, Op2, Expr1, Expr2},
   NewData = {[Op1 | RestOps], [NewExpr | RestExprs]},
   NewData.
   
@@ -94,9 +97,9 @@ binop_should_shunt(Op1, Op2) ->
 -spec binop_finalize(shunt_data()) -> kalerl_ast:kalerl_expr().
 binop_finalize(Data = {Ops, _Exprs}) when length(Ops) =:= 0 ->
   binop_pop_expr(Data);
-binop_finalize({[Op | RestOps], [Expr1 | [Expr2 | RestExprs]]}) ->
+binop_finalize({[{Op, Line} | RestOps], [Expr1 | [Expr2 | RestExprs]]}) ->
   %% Pop first operator off and combine it with the top two expressions
-  NewExpr = {binary, Op, Expr1, Expr2},
+  NewExpr = {binary, Line, Op, Expr1, Expr2},
   NewData = {RestOps, [NewExpr | RestExprs]},
   binop_finalize(NewData).
 
@@ -116,6 +119,6 @@ toplevel_merge({toplevel, NewFuncs, NewExprs}, {toplevel, ExistingFuncs, Existin
   
 -spec toplevel_to_module(toplevel(), string()) -> {ok, kalerl_ast:kalerl_module()}.
 toplevel_to_module({toplevel, Funcs, MainExprs}, ModuleName) ->
-  Main = {function, {prototype, "main", []}, MainExprs},
-  {ok, {module, ModuleName, Funcs ++ [Main]}}.
+  Main = {function, 1, {prototype, 1, "main", []}, MainExprs},
+  {ok, {module, 1, ModuleName, Funcs ++ [Main]}}.
 

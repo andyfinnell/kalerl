@@ -6,12 +6,15 @@
 
 unwrap({_,_,V}) -> V.
 
--type binop() :: atom().
--type shunt_data() :: {[binop()], [kalerl_ast:kalerl_expr()]}.
+line({_,Line}) -> Line;
+line({_,Line,_}) -> Line.
 
--spec binop_push_op({binop(), kalerl_ast:kalerl_expr()}, shunt_data()) -> shunt_data().
-binop_push_op({Op, Expr}, {Ops, Exprs}) ->
-  {[Op | Ops], [Expr | Exprs]}.
+-type binop() :: atom().
+-type shunt_data() :: {[{binop(), integer()}], [kalerl_ast:kalerl_expr()]}.
+
+-spec binop_push_op({binop(), integer(), kalerl_ast:kalerl_expr()}, shunt_data()) -> shunt_data().
+binop_push_op({Op, Line, Expr}, {Ops, Exprs}) ->
+  {[{Op, Line} | Ops], [Expr | Exprs]}.
 
 -spec binop_push_expr(kalerl_ast:kalerl_expr(), shunt_data()) -> shunt_data().
 binop_push_expr(Expr, {Ops, Exprs}) ->
@@ -25,7 +28,7 @@ binop_pop_expr({_Ops, [Expr | _Exprs]}) ->
 binop_shunt(Data = {Ops, _OutputExprs}) when length(Ops) < 2 ->
   %% If only one operator, nothing to do
   Data;
-binop_shunt(Data = {[Op1 | [Op2 | _RestOps]], _OutputExprs}) ->
+binop_shunt(Data = {[{Op1, _Line1} | [{Op2, _Line2} | _RestOps]], _OutputExprs}) ->
   %% Shunting-yard algorithm, kinda
   case binop_should_shunt(Op1, Op2) of
     true -> binop_shunt(binop_do_shunt(Data));
@@ -33,8 +36,8 @@ binop_shunt(Data = {[Op1 | [Op2 | _RestOps]], _OutputExprs}) ->
   end.
 
 -spec binop_do_shunt(shunt_data()) -> shunt_data().
-binop_do_shunt({[Op1 | [Op2 | RestOps]], [Expr1 | [Expr2 | RestExprs]]}) ->
-  NewExpr = {binary, Op2, Expr1, Expr2},
+binop_do_shunt({[Op1 | [{Op2, Line2} | RestOps]], [Expr1 | [Expr2 | RestExprs]]}) ->
+  NewExpr = {binary, Line2, Op2, Expr1, Expr2},
   NewData = {[Op1 | RestOps], [NewExpr | RestExprs]},
   NewData.
   
@@ -48,9 +51,9 @@ binop_should_shunt(Op1, Op2) ->
 -spec binop_finalize(shunt_data()) -> kalerl_ast:kalerl_expr().
 binop_finalize(Data = {Ops, _Exprs}) when length(Ops) =:= 0 ->
   binop_pop_expr(Data);
-binop_finalize({[Op | RestOps], [Expr1 | [Expr2 | RestExprs]]}) ->
+binop_finalize({[{Op, Line} | RestOps], [Expr1 | [Expr2 | RestExprs]]}) ->
   %% Pop first operator off and combine it with the top two expressions
-  NewExpr = {binary, Op, Expr1, Expr2},
+  NewExpr = {binary, Line, Op, Expr1, Expr2},
   NewData = {RestOps, [NewExpr | RestExprs]},
   binop_finalize(NewData).
 
@@ -70,8 +73,8 @@ toplevel_merge({toplevel, NewFuncs, NewExprs}, {toplevel, ExistingFuncs, Existin
   
 -spec toplevel_to_module(toplevel(), string()) -> {ok, kalerl_ast:kalerl_module()}.
 toplevel_to_module({toplevel, Funcs, MainExprs}, ModuleName) ->
-  Main = {function, {prototype, "main", []}, MainExprs},
-  {ok, {module, ModuleName, Funcs ++ [Main]}}.
+  Main = {function, 1, {prototype, 1, "main", []}, MainExprs},
+  {ok, {module, 1, ModuleName, Funcs ++ [Main]}}.
 
 
 -file("/usr/local/lib/erlang/lib/parsetools-2.1.1/include/yeccpre.hrl", 0).
@@ -248,7 +251,7 @@ yecctoken2string(Other) ->
 
 
 
--file("src/kalerl_parser.erl", 251).
+-file("src/kalerl_parser.erl", 254).
 
 -dialyzer({nowarn_function, yeccpars2/7}).
 yeccpars2(0=S, Cat, Ss, Stack, T, Ts, Tzr) ->
@@ -684,7 +687,7 @@ yeccpars2_9_(__Stack0) ->
 yeccpars2_13_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
-   { variable , unwrap ( __1 ) }
+   { variable , line ( __1 ) , unwrap ( __1 ) }
   end | __Stack].
 
 -compile({inline,yeccpars2_14_/1}).
@@ -692,7 +695,7 @@ yeccpars2_13_(__Stack0) ->
 yeccpars2_14_(__Stack0) ->
  [__1 | __Stack] = __Stack0,
  [begin
-   { number , unwrap ( __1 ) }
+   { number , line ( __1 ) , unwrap ( __1 ) }
   end | __Stack].
 
 -compile({inline,yeccpars2_15_/1}).
@@ -715,7 +718,7 @@ yeccpars2_16_(__Stack0) ->
 yeccpars2_18_(__Stack0) ->
  [__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
-   { call , unwrap ( __1 ) , __3 }
+   { call , line ( __1 ) , unwrap ( __1 ) , __3 }
   end | __Stack].
 
 -compile({inline,yeccpars2_19_/1}).
@@ -760,7 +763,7 @@ yeccpars2_25_(__Stack0) ->
 yeccpars2_26_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
-   [ unwrap ( __1 ) | __2 ]
+   [ { variable , line ( __1 ) , unwrap ( __1 ) } | __2 ]
   end | __Stack].
 
 -compile({inline,yeccpars2_27_/1}).
@@ -768,7 +771,7 @@ yeccpars2_26_(__Stack0) ->
 yeccpars2_27_(__Stack0) ->
  [__4,__3,__2,__1 | __Stack] = __Stack0,
  [begin
-   { prototype , unwrap ( __1 ) , __3 }
+   { prototype , line ( __1 ) , unwrap ( __1 ) , __3 }
   end | __Stack].
 
 -compile({inline,yeccpars2_29_/1}).
@@ -776,7 +779,7 @@ yeccpars2_27_(__Stack0) ->
 yeccpars2_29_(__Stack0) ->
  [__3,__2,__1 | __Stack] = __Stack0,
  [begin
-   { function , __2 , [ __3 ] }
+   { function , line ( __1 ) , __2 , [ __3 ] }
   end | __Stack].
 
 -compile({inline,yeccpars2_31_/1}).
@@ -808,7 +811,7 @@ yeccpars2_33_(__Stack0) ->
 yeccpars2_35_(__Stack0) ->
  [__2,__1 | __Stack] = __Stack0,
  [begin
-   { unwrap ( __1 ) , __2 }
+   { unwrap ( __1 ) , line ( __1 ) , __2 }
   end | __Stack].
 
 -compile({inline,yeccpars2_36_/1}).
@@ -828,4 +831,4 @@ yeccpars2_37_(__Stack0) ->
   end | __Stack].
 
 
--file("src/kalerl_parser.yrl", 122).
+-file("src/kalerl_parser.yrl", 125).
