@@ -63,6 +63,8 @@ pass1_expr({variable, Line, Name}, State = #checkstate{scope = ScopeID, table = 
   end;
 pass1_expr({binary, _Line, _Op, Expr1, Expr2}, State) ->
   lists:foldl(fun pass1_expr/2, State, [Expr1, Expr2]);
+pass1_expr({'if', _Line, ConditionExpr, TrueExprs, FalseExprs}, State) ->
+  lists:foldl(fun pass1_expr/2, State, [ConditionExpr] ++ TrueExprs ++ FalseExprs);
 pass1_expr({call, _Line, _Name, Args}, State) ->
   lists:foldl(fun pass1_expr/2, State, Args).
 
@@ -110,6 +112,8 @@ pass2_expr({variable, _Line, _Name}, State) ->
   State;
 pass2_expr({binary, _Line, _Op, Expr1, Expr2}, State) ->
   lists:foldl(fun pass2_expr/2, State, [Expr1, Expr2]);
+pass2_expr({'if', _Line, ConditionExpr, TrueExprs, FalseExprs}, State) ->
+  lists:foldl(fun pass2_expr/2, State, [ConditionExpr] ++ TrueExprs ++ FalseExprs);
 pass2_expr({call, Line, Name, Args}, State = #checkstate{scope = ScopeID, table = Table, errors = Errors}) ->
   FunctionID = list_to_atom(Name),
   case kalerl_symboltable:find_symbol_recursive(FunctionID, ScopeID, Table) of

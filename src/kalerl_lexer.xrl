@@ -29,6 +29,9 @@ Erlang code.
 -spec validate_ident(lineno(), string()) -> kalerl_token().
 validate_ident(Line, "def") -> {def, Line};
 validate_ident(Line, "extern") -> {extern, Line};
+validate_ident(Line, "if") -> {'if', Line};
+validate_ident(Line, "else") -> {else, Line};
+validate_ident(Line, "then") -> {then, Line};
 validate_ident(Line, Characters) -> {ident, Line, Characters}.
 
 -spec validate_number(lineno(), string()) -> kalerl_token().

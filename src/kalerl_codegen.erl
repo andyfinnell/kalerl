@@ -40,7 +40,11 @@ expr({number, Line, Number}) ->
 expr({variable, Line, Name}) ->
   {var, Line, list_to_atom(Name)};
 expr({binary, Line, Op, Expr1, Expr2}) ->
-  {op, Line, operator(Op), expr(Expr1), expr(Expr2)};
+  convert_operator_result(Op, Line, {op, Line, operator(Op), expr(Expr1), expr(Expr2)});
+expr({'if', Line, ConditionExpr, TrueExprs, FalseExprs}) ->
+  FalseClause = {clause, Line, [{float, Line, 0.0}], [], body(FalseExprs)},
+  TrueClause = {clause, Line, [{var, Line, '_'}], [], body(TrueExprs)},
+  {'case', Line, expr(ConditionExpr), [FalseClause, TrueClause]};  
 expr({call, Line, Name, Args}) ->
   NameExpr = {atom, Line, list_to_atom(Name)},
   {call, Line, NameExpr, lists:map(fun expr/1, Args)}.
@@ -48,6 +52,14 @@ expr({call, Line, Name, Args}) ->
 operator(Op) ->
   %% For now, there's a 1:1 correspondence
   Op.
-  
+
+convert_operator_result('<', Line, ExprForm) ->
+  %% Our little language has to return float for all operators
+  FalseClause = {clause, Line, [{atom, Line, false}], [], [{float, Line, 0.0}]},
+  TrueClause = {clause, Line, [{atom, Line, true}], [], [{float, Line, 1.0}]},
+  {'case', Line, ExprForm, [FalseClause, TrueClause]};  
+convert_operator_result(_Op, _Line, Form) ->
+  Form.
+
 %% TODO: code generation
 %%  - gen the -spec forms

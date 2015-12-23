@@ -14,6 +14,8 @@
   | kalerl_variable()
   %% variant for a binary operator. *)
   | {binary, kalerl_lineno(), atom(), kalerl_expr(), kalerl_expr()}
+  %% control flow
+  | {'if', kalerl_lineno(), kalerl_expr(), [kalerl_expr()], [kalerl_expr()]}
   %% variant for function calls. *)
   | {call, kalerl_lineno(), string(), [kalerl_expr()]}.
   
