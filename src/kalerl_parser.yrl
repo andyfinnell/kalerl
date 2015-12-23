@@ -112,13 +112,12 @@ binop_finalize({[{Op, Line} | RestOps], [Expr1 | [Expr2 | RestExprs]]}) ->
   binop_finalize(NewData).
 
 -spec binop_precedence(binop()) -> integer().
-binop_precedence('<') -> 10;
-binop_precedence('+') -> 20;
-binop_precedence('-') -> 20;
-binop_precedence('*') -> 40.
+binop_precedence(Op) ->
+  kalerl_optable:precedence(Op, self()).
 
 -spec binop_associate(binop()) -> left | right.
-binop_associate(_Op) -> left.
+binop_associate(Op) -> 
+  kalerl_optable:association(Op, self()).
 
 -type toplevel() :: {toplevel, [kalerl_ast:kalerl_func() | kalerl_ast:kalerl_proto()], [kalerl_ast:kalerl_expr()]}.
 -spec toplevel_merge(toplevel(), toplevel()) -> toplevel().

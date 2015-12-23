@@ -15,6 +15,7 @@ main(Args) ->
 
 -spec execute(list()) -> ok.
 execute([Filename]) ->  
+  kalerl_optable:start_link(),
   process_parse(kalerl_compiler:file(Filename), Filename);
 execute(_Args) ->
 	usage().

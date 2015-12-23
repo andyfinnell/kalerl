@@ -58,13 +58,12 @@ binop_finalize({[{Op, Line} | RestOps], [Expr1 | [Expr2 | RestExprs]]}) ->
   binop_finalize(NewData).
 
 -spec binop_precedence(binop()) -> integer().
-binop_precedence('<') -> 10;
-binop_precedence('+') -> 20;
-binop_precedence('-') -> 20;
-binop_precedence('*') -> 40.
+binop_precedence(Op) ->
+  kalerl_optable:precedence(Op, self()).
 
 -spec binop_associate(binop()) -> left | right.
-binop_associate(_Op) -> left.
+binop_associate(Op) -> 
+  kalerl_optable:association(Op, self()).
 
 -type toplevel() :: {toplevel, [kalerl_ast:kalerl_func() | kalerl_ast:kalerl_proto()], [kalerl_ast:kalerl_expr()]}.
 -spec toplevel_merge(toplevel(), toplevel()) -> toplevel().
@@ -251,7 +250,7 @@ yecctoken2string(Other) ->
 
 
 
--file("src/kalerl_parser.erl", 254).
+-file("src/kalerl_parser.erl", 253).
 
 -dialyzer({nowarn_function, yeccpars2/7}).
 yeccpars2(0=S, Cat, Ss, Stack, T, Ts, Tzr) ->
@@ -1140,4 +1139,4 @@ yeccpars2_58_(__Stack0) ->
   end | __Stack].
 
 
--file("src/kalerl_parser.yrl", 133).
+-file("src/kalerl_parser.yrl", 132).
