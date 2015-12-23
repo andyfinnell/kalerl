@@ -3,7 +3,7 @@
 
 -module(kalerl_symboltable).
 
--export([new/0, add_scope/2, add_symbol/5, find_symbol/3, find_symbol_recursive/3]).
+-export([new/0, add_scope/2, add_symbol/6, find_symbol/3, find_symbol_recursive/3]).
 -export_type([symboltable/0]).
 
 -record(symboltable, {next_scope = 0 :: integer(),
@@ -28,9 +28,9 @@ add_scope(ParentScopeID, Table = #symboltable{next_scope = NewScopeID, scopes = 
   NewTable = Table#symboltable{next_scope = NewScopeID + 1, scopes = NewScopes},
   {NewScopeID, NewTable}.
 
--spec add_symbol(atom(), kalerl_symbol:symbol_type(), kalerl_symbol:scopeid(), kalerl_symbol:scopeid(), symboltable()) -> symboltable().
-add_symbol(Id, Type, DefinedScope, Scope, Table = #symboltable{scopes = Scopes}) ->
-  Symbol = kalerl_symbol:new(Id, Type, Scope, DefinedScope),
+-spec add_symbol(atom(), kalerl_symbol:symbol_type(), kalerl_symbol:scopeid(), kalerl_symbol:scopeid(), atom() | none, symboltable()) -> symboltable().
+add_symbol(Id, Type, DefinedScope, Scope, Module, Table = #symboltable{scopes = Scopes}) ->
+  Symbol = kalerl_symbol:new(Id, Type, Scope, DefinedScope, Module),
   OldScope = maps:get(Scope, Scopes),
   OldSymbols = OldScope#scope.symbols,
   NewSymbols = OldSymbols#{Id => Symbol},

@@ -15,8 +15,8 @@ file(Filename) ->
     Tokens <- lexer_error(kalerl_lexer:string(binary_to_list(Contents)), Filename),
     Toplevel <- parser_error(kalerl_parser:parse(Tokens), Filename),
     IRModule <- kalerl_parser:toplevel_to_module(Toplevel, filename:rootname(filename:basename(Filename))),
-    IRModule2 <- symbolcheck_error(kalerl_symbolcheck:module(IRModule), Filename),
-    AbsForms <- kalerl_codegen:module(IRModule2),
+    {IRModule2, Scope, SymbolTable} <- symbolcheck_error(kalerl_symbolcheck:module(IRModule), Filename),
+    AbsForms <- kalerl_codegen:module(IRModule2, Scope, SymbolTable),
     kalerl_binarygen:forms(AbsForms)
   ]).
 

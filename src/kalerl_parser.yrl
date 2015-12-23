@@ -50,9 +50,9 @@ prototype -> ident '(' identifier_list ')'  : {prototype, line('$1'), unwrap('$1
 identifier_list -> ident identifier_list    : [{variable, line('$1'), unwrap('$1')} | '$2'].
 identifier_list -> '$empty'                 : [].
 
-definition -> def prototype expression      : {function, line('$1'), '$2', ['$3']}.
+definition -> def prototype expression      : {function, line('$1'), '$2', ['$3'], none}.
 
-external -> extern prototype                : '$2'.
+external -> extern prototype in ident       : {function, line('$1'), '$2', [], list_to_atom(unwrap('$4'))}.
 
 Erlang code.
 
@@ -127,6 +127,6 @@ toplevel_merge({toplevel, NewFuncs, NewExprs}, {toplevel, ExistingFuncs, Existin
   
 -spec toplevel_to_module(toplevel(), string()) -> {ok, kalerl_ast:kalerl_module()}.
 toplevel_to_module({toplevel, Funcs, MainExprs}, ModuleName) ->
-  Main = {function, 1, {prototype, 1, "main", []}, MainExprs},
+  Main = {function, 1, {prototype, 1, "main", []}, MainExprs, none},
   {ok, {module, 1, ModuleName, Funcs ++ [Main]}}.
 

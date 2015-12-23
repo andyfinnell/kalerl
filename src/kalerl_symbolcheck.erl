@@ -27,8 +27,8 @@ format_error({redefine, Name}) ->
 
 %% Implementation
 
-process_state(Module, #checkstate{errors = Errors}) when length(Errors) =:= 0 ->
-  {ok, Module};
+process_state(Module, #checkstate{errors = Errors, table = Table, scope = Scope}) when length(Errors) =:= 0 ->
+  {ok, {Module, Scope, Table}};
 process_state(_Module, #checkstate{errors = Errors, warnings = Warnings}) ->
   {error, Errors, Warnings}.
 
@@ -39,17 +39,14 @@ pass1_module({module, _Line, _ModuleName, Functions}) ->
   State = #checkstate{table = Table, scope = ScopeID, errors = [], warnings = []},
   lists:foldl(fun pass1_function/2, State, Functions).
 
-pass1_function({prototype, _Line, _Name, _Args}, State) ->
-  %% We don't check extern prototypes
-  State; 
-pass1_function({function, Line, {prototype, _Line, Name, Args}, Exprs}, State = #checkstate{scope = OldScopeID}) ->
-  State1 = define_scope_symbol(Name, Line, {function, length(Args)}, State),  
+pass1_function({function, Line, {prototype, _Line, Name, Args}, Exprs, Module}, State = #checkstate{scope = OldScopeID}) ->
+  State1 = define_scope_symbol(Name, Line, {function, length(Args)}, Module, State),  
   State2 = lists:foldl(fun pass1_parameter/2, State1, Args),
   State3 = lists:foldl(fun pass1_expr/2, State2, Exprs),
   State3#checkstate{scope = OldScopeID}.
   
 pass1_parameter({variable, Line, Name}, State) ->
-  define_symbol(Name, Line, float, none, State).  
+  define_symbol(Name, Line, float, none, none, State).  
     
 pass1_expr({number, _Line, _Number}, State) ->
   State;
@@ -68,7 +65,7 @@ pass1_expr({'if', _Line, ConditionExpr, TrueExprs, FalseExprs}, State) ->
   lists:foldl(fun pass1_expr/2, State, [ConditionExpr] ++ TrueExprs ++ FalseExprs);
 pass1_expr({for, Line, IteratorName, InitExpr, EndExpr, StepExpr, BodyExprs}, State = #checkstate{scope = OldScopeID}) ->
   State1 = pass1_expr(InitExpr, State), %% Before var is initialized
-  State2 = define_scope_symbol(IteratorName, Line, float, State1),
+  State2 = define_scope_symbol(IteratorName, Line, float, none, State1),
   State3 = pass1_expr(EndExpr, State2),
   State4 = pass1_expr(StepExpr, State3),
   State5 = lists:foldl(fun pass1_expr/2, State4, BodyExprs),
@@ -82,20 +79,20 @@ check_type(ActualType, ExpectedType, Line, State = #checkstate{errors = Errors})
   Error = {Line, ?MODULE, {type_mismatch, ActualType, ExpectedType}},
   State#checkstate{errors = [Error | Errors]}.
   
-define_scope_symbol(Name, Line, Type, State = #checkstate{scope = ParentScope, table = Table}) ->
+define_scope_symbol(Name, Line, Type, Module, State = #checkstate{scope = ParentScope, table = Table}) ->
   {NewScopeID, NewTable} = kalerl_symboltable:add_scope(ParentScope, Table),
   State1 = State#checkstate{table = NewTable},
-  State2 = define_symbol(Name, Line, Type, NewScopeID, State1),
+  State2 = define_symbol(Name, Line, Type, NewScopeID, Module, State1),
   State2#checkstate{scope = NewScopeID}.
   
-define_symbol(Name, Line, Type, DefinedScope, State = #checkstate{scope = ParentScope, table = Table, errors = Errors}) ->
+define_symbol(Name, Line, Type, DefinedScope, Module, State = #checkstate{scope = ParentScope, table = Table, errors = Errors}) ->
   SymbolID = list_to_atom(Name),
   case kalerl_symboltable:find_symbol(SymbolID, ParentScope, Table) of
     {ok, _Symbol} -> 
       Error = {Line, ?MODULE, {redefine, Name}},
       State#checkstate{errors = [Error | Errors]};
     error -> 
-      NewTable = kalerl_symboltable:add_symbol(SymbolID, Type, DefinedScope, ParentScope, Table),
+      NewTable = kalerl_symboltable:add_symbol(SymbolID, Type, DefinedScope, ParentScope, Module, Table),
       State#checkstate{table = NewTable}
   end.
 
@@ -104,10 +101,7 @@ define_symbol(Name, Line, Type, DefinedScope, State = #checkstate{scope = Parent
 pass2_module({module, _Line, _ModuleName, Functions}, State) ->
   lists:foldl(fun pass2_function/2, State, Functions).
 
-pass2_function({prototype, _Line, _Name, _Args}, State) ->
-  %% We don't check extern prototypes
-  State; 
-pass2_function({function, _Line, {prototype, _Line, Name, _Args}, Exprs}, State = #checkstate{scope = OldScopeID, table = Table}) ->
+pass2_function({function, _Line, {prototype, _Line, Name, _Args}, Exprs, _Module}, State = #checkstate{scope = OldScopeID, table = Table}) ->
   FunctionID = list_to_atom(Name),
   {ok, Symbol} = kalerl_symboltable:find_symbol(FunctionID, OldScopeID, Table),
   State1 = State#checkstate{scope = kalerl_symbol:defined_scope(Symbol)},

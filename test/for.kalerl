@@ -1,6 +1,9 @@
+extern printfloat(f) in kalstd
+
 def adder(n)
  for i = 1, i < n, 1.0 in
-   n + i
+   printfloat(i)
 
 # print 100 '*' characters
-adder(100)
+printfloat(10)
+adder(10)

@@ -25,7 +25,7 @@
 -type kalerl_proto() :: {prototype, kalerl_lineno(), string(), [kalerl_variable()]}.
 
 %% Function definition
--type kalerl_func() :: {function, kalerl_lineno(), kalerl_proto(), [kalerl_expr()]}.
+-type kalerl_func() :: {function, kalerl_lineno(), kalerl_proto(), [kalerl_expr()], atom() | none}.
 
--type kalerl_module() :: {module, kalerl_lineno(), string(), [kalerl_func() | kalerl_proto()]}.
+-type kalerl_module() :: {module, kalerl_lineno(), string(), [kalerl_func()]}.
 -export_type([kalerl_expr/0, kalerl_proto/0, kalerl_func/0, kalerl_module/0, kalerl_lineno/0]).
