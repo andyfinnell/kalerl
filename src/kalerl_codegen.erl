@@ -72,9 +72,9 @@ expr({for, Line, IteratorName, InitExpr, EndExpr, StepExpr, BodyExprs}, State = 
   IteratorExpr = {var, Line, list_to_atom(IteratorName)},
   NextExpr = {op, Line, '+', IteratorExpr, expr(StepExpr, LoopState)},
   RecurseExpr = {call, Line, LoopVarExpr, [NextExpr]},
-  ContinueClause = {clause, Line, [{float, Line, 0.0}], [], body(BodyExprs, LoopState) ++ [RecurseExpr]},
-  StopClause = {clause, Line, [{var, Line, '_'}], [], [{float, Line, 1.0}]},
-  CaseExpr = {'case', Line, expr(EndExpr, LoopState), [ContinueClause, StopClause]},
+  ContinueClause = {clause, Line, [{var, Line, '_'}], [], body(BodyExprs, LoopState) ++ [RecurseExpr]},
+  StopClause = {clause, Line, [{float, Line, 0.0}], [], [{float, Line, 1.0}]},
+  CaseExpr = {'case', Line, expr(EndExpr, LoopState), [StopClause, ContinueClause]},
   FunExpr = {named_fun, Line, LoopFunID, [{clause, Line, [IteratorExpr], [], [CaseExpr]}]},
   {call, Line, FunExpr, [expr(InitExpr, State)]};
 expr({call, Line, Name, Args}, State = #genstate{scope = Scope, table = Table}) ->
