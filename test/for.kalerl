@@ -1,0 +1,6 @@
+def adder(n)
+ for i = 1, i < n, 1.0 in
+   n + i
+
+# print 100 '*' characters
+adder(100)

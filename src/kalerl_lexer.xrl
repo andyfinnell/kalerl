@@ -13,7 +13,7 @@ Rules.
 {DIGIT}+(\.{DIGIT}+)?         : {token, validate_number(TokenLine, TokenChars)}.
 {WHITESPACE}+                 : skip_token.
 #.*                           : skip_token. %% comments
-[\(\),]                       : {token, validate_char(TokenLine, TokenChars)}.
+[\(\),=]                      : {token, validate_char(TokenLine, TokenChars)}.
 .                             : {token, validate_operator(TokenLine, TokenChars)}.
 
 Erlang code.
@@ -32,6 +32,8 @@ validate_ident(Line, "extern") -> {extern, Line};
 validate_ident(Line, "if") -> {'if', Line};
 validate_ident(Line, "else") -> {else, Line};
 validate_ident(Line, "then") -> {then, Line};
+validate_ident(Line, "for") -> {for, Line};
+validate_ident(Line, "in") -> {in, Line};
 validate_ident(Line, Characters) -> {ident, Line, Characters}.
 
 -spec validate_number(lineno(), string()) -> kalerl_token().

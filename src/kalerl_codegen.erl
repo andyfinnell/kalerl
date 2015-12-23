@@ -44,7 +44,28 @@ expr({binary, Line, Op, Expr1, Expr2}) ->
 expr({'if', Line, ConditionExpr, TrueExprs, FalseExprs}) ->
   FalseClause = {clause, Line, [{float, Line, 0.0}], [], body(FalseExprs)},
   TrueClause = {clause, Line, [{var, Line, '_'}], [], body(TrueExprs)},
-  {'case', Line, expr(ConditionExpr), [FalseClause, TrueClause]};  
+  {'case', Line, expr(ConditionExpr), [FalseClause, TrueClause]};
+expr({for, Line, IteratorName, InitExpr, EndExpr, StepExpr, BodyExprs}) ->
+  LoopFunID = binary_to_atom(iolist_to_binary(io_lib:format("forloop__~s__~p__", [IteratorName, Line])), utf8),
+  LoopVarExpr = {var, Line, LoopFunID},
+  
+  %% Essentially this is what we're generating for the for loop
+  % Loop = fun Loop(IteratorName) ->
+  %   case EndExpr of
+  %     0.0 ->
+  %       BodyExprs;
+  %       Loop(IteratorName + StepExpr)
+  %     _ -> 1.0;
+  %   end,
+  % Loop(InitExr)
+  IteratorExpr = {var, Line, list_to_atom(IteratorName)},
+  NextExpr = {op, Line, '+', IteratorExpr, expr(StepExpr)},
+  RecurseExpr = {call, Line, LoopVarExpr, [NextExpr]},
+  ContinueClause = {clause, Line, [{float, Line, 0.0}], [], body(BodyExprs) ++ [RecurseExpr]},
+  StopClause = {clause, Line, [{var, Line, '_'}], [], [{float, Line, 1.0}]},
+  CaseExpr = {'case', Line, expr(EndExpr), [ContinueClause, StopClause]},
+  FunExpr = {named_fun, Line, LoopFunID, [{clause, Line, [IteratorExpr], [], [CaseExpr]}]},
+  {call, Line, FunExpr, [expr(InitExpr)]};
 expr({call, Line, Name, Args}) ->
   NameExpr = {atom, Line, list_to_atom(Name)},
   {call, Line, NameExpr, lists:map(fun expr/1, Args)}.

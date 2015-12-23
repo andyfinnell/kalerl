@@ -28,6 +28,8 @@ validate_ident(Line, "extern") -> {extern, Line};
 validate_ident(Line, "if") -> {'if', Line};
 validate_ident(Line, "else") -> {else, Line};
 validate_ident(Line, "then") -> {then, Line};
+validate_ident(Line, "for") -> {for, Line};
+validate_ident(Line, "in") -> {in, Line};
 validate_ident(Line, Characters) -> {ident, Line, Characters}.
 
 -spec validate_number(lineno(), string()) -> kalerl_token().
@@ -313,7 +315,7 @@ yysuf(List, N) -> lists:nthtail(N, List).
 %% return signal either an unrecognised character or end of current
 %% input.
 
--file("src/kalerl_lexer.erl", 315).
+-file("src/kalerl_lexer.erl", 317).
 yystate() -> 5.
 
 yystate(8, [C|Ics], Line, Tlen, _, _) when C >= 48, C =< 57 ->
@@ -326,6 +328,8 @@ yystate(6, [C|Ics], Line, Tlen, Action, Alen) when C >= 48, C =< 57 ->
     yystate(8, Ics, Line, Tlen+1, Action, Alen);
 yystate(6, Ics, Line, Tlen, Action, Alen) ->
     {Action,Alen,Tlen,Ics,Line,6};
+yystate(5, [61|Ics], Line, Tlen, Action, Alen) ->
+    yystate(4, Ics, Line, Tlen+1, Action, Alen);
 yystate(5, [44|Ics], Line, Tlen, Action, Alen) ->
     yystate(4, Ics, Line, Tlen+1, Action, Alen);
 yystate(5, [42|Ics], Line, Tlen, Action, Alen) ->
@@ -364,7 +368,9 @@ yystate(5, [C|Ics], Line, Tlen, Action, Alen) when C >= 45, C =< 47 ->
     yystate(7, Ics, Line, Tlen+1, Action, Alen);
 yystate(5, [C|Ics], Line, Tlen, Action, Alen) when C >= 48, C =< 57 ->
     yystate(2, Ics, Line, Tlen+1, Action, Alen);
-yystate(5, [C|Ics], Line, Tlen, Action, Alen) when C >= 58, C =< 64 ->
+yystate(5, [C|Ics], Line, Tlen, Action, Alen) when C >= 58, C =< 60 ->
+    yystate(7, Ics, Line, Tlen+1, Action, Alen);
+yystate(5, [C|Ics], Line, Tlen, Action, Alen) when C >= 62, C =< 64 ->
     yystate(7, Ics, Line, Tlen+1, Action, Alen);
 yystate(5, [C|Ics], Line, Tlen, Action, Alen) when C >= 65, C =< 90 ->
     yystate(1, Ics, Line, Tlen+1, Action, Alen);

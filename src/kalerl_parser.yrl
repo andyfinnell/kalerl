@@ -1,9 +1,9 @@
 Nonterminals 
 expression primary_expr number_expr paren_expr identifier_expr identifier_list
 bin_op_rhs bin_op_rhs_list prototype definition external toplevel_list toplevel
-argument_expr_list if_expr.
+argument_expr_list if_expr for_expr for_step.
 
-Terminals '(' ')' ',' 'if' else then
+Terminals '(' ')' ',' '=' 'if' else then for in
 operator def extern ident number.
 
 Rootsymbol toplevel_list.
@@ -22,6 +22,7 @@ primary_expr -> identifier_expr             : '$1'.
 primary_expr -> number_expr                 : '$1'.
 primary_expr -> paren_expr                  : '$1'.
 primary_expr -> if_expr                     : '$1'.
+primary_expr -> for_expr                    : '$1'.
 
 number_expr -> number                       : {number, line('$1'), unwrap('$1')}.
 
@@ -35,6 +36,10 @@ argument_expr_list -> expression ',' argument_expr_list : ['$1' | '$3'].
 argument_expr_list -> '$empty'              : [].
 
 if_expr -> 'if' expression then expression else expression : {'if', line('$1'), '$2', ['$4'], ['$6']}.
+
+for_expr -> for ident '=' expression ',' expression for_step in expression : {for, line('$1'), unwrap('$2'), '$4', '$6', '$7', ['$9']}.
+for_step -> '$empty'                        : {number, 0, 1.0}.
+for_step -> ',' expression                  : '$2'.
 
 bin_op_rhs -> operator primary_expr         : {unwrap('$1'), line('$1'), '$2'}.
 bin_op_rhs_list -> bin_op_rhs               : binop_push_op('$1', {[], []}).
