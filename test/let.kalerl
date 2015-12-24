@@ -1,0 +1,6 @@
+def stuff(x y z)
+  let w = x * y + z in
+  let q = w + z in
+  w - q
+
+stuff(2, 3, 4)

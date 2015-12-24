@@ -83,6 +83,11 @@ expr({for, Line, IteratorName, InitExpr, EndExpr, StepExpr, BodyExprs}, State = 
   CaseExpr = {'case', Line, expr(EndExpr, LoopState), [StopClause, ContinueClause]},
   FunExpr = {named_fun, Line, LoopFunID, [{clause, Line, [IteratorExpr], [], [CaseExpr]}]},
   {call, Line, FunExpr, [expr(InitExpr, State)]};
+expr({'let', Line, NameID, Expr, Body}, State = #genstate{scope = Scope, table = Table}) ->
+  {ok, Symbol} = kalerl_symboltable:find_symbol(NameID, Scope, Table),
+  BodyState = State#genstate{scope = kalerl_symbol:defined_scope(Symbol)},
+  LetExpr = {match, Line, {var, Line, NameID}, expr(Expr, State)},
+  {block, Line, [LetExpr | body(Body, BodyState)]};
 expr({call, Line, Name, Args}, State = #genstate{scope = Scope, table = Table}) ->
   FunID = list_to_atom(Name),
   {ok, Symbol} = kalerl_symboltable:find_symbol_recursive(FunID, Scope, Table),

@@ -32,6 +32,7 @@ validate_ident(Line, "for") -> {for, Line};
 validate_ident(Line, "in") -> {in, Line};
 validate_ident(Line, "binary") -> {binary, Line};
 validate_ident(Line, "unary") -> {unary, Line};
+validate_ident(Line, "let") -> {'let', Line};
 validate_ident(Line, Characters) -> {ident, Line, Characters}.
 
 -spec validate_number(lineno(), string()) -> kalerl_token().
@@ -317,7 +318,7 @@ yysuf(List, N) -> lists:nthtail(N, List).
 %% return signal either an unrecognised character or end of current
 %% input.
 
--file("src/kalerl_lexer.erl", 319).
+-file("src/kalerl_lexer.erl", 320).
 yystate() -> 5.
 
 yystate(8, [C|Ics], Line, Tlen, _, _) when C >= 48, C =< 57 ->

@@ -14,6 +14,8 @@
     {number, kalerl_lineno(), float()}
   %% variant for referencing a variable, like "a".
   | kalerl_variable()
+  %% bindings
+  | {'let', kalerl_lineno(), atom(), kalerl_expr(), [kalerl_expr()]}
   %% variant for a binary operator. *)
   | {binary, kalerl_lineno(), atom(), kalerl_expr(), kalerl_expr()}
   %% variant for a unary operator. *)

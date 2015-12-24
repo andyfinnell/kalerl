@@ -3,7 +3,7 @@ expression primary_expr number_expr paren_expr identifier_expr identifier_list
 bin_op_rhs bin_op_rhs_list prototype definition external toplevel_list toplevel
 argument_expr_list if_expr for_expr for_step operator_precedence unary_expr.
 
-Terminals '(' ')' ',' '=' 'if' else then for in
+Terminals '(' ')' ',' '=' 'if' else then for in 'let'
 operator def extern ident number binary unary.
 
 Rootsymbol toplevel_list.
@@ -17,6 +17,7 @@ toplevel -> external                      : {toplevel, ['$1'], []}.
 
 expression -> unary_expr                  : '$1'.
 expression -> unary_expr bin_op_rhs_list  : binop_finalize(binop_shunt(binop_push_expr('$1', '$2'))).
+expression -> 'let' ident '=' expression in expression : {'let', line('$1'), list_to_atom(unwrap('$2')), '$4', ['$6']}.
 
 unary_expr -> operator primary_expr         : {unary, line('$1'), unwrap('$1'), '$2'}.
 unary_expr -> primary_expr                  : '$1'.

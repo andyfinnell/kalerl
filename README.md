@@ -51,3 +51,10 @@ Another difference is the handling of externs. kalerl doesn't handle calling out
     extern foo(a) in bar
     
 declares that there is a function `foo/1` in module `bar`. After this declaration, kalerl code can call `foo/1` like any other kalerl function and it will do the right thing.
+
+One major deviation from the original Kaleidoscope language is the lack of mutability. BEAM/Erlang doesn't support it (mostly, kinda), so it doesn't make sense for kalerl to either. This means kalerl remains a functional language. Because of the lack of mutability, the `var/in` construct in Kaleidoscope becomes a `let/in` and kalerl does not implement an assignment operator. An example of a kalerl `let/in`:
+
+    let x = 3 + 4 * 5 in
+    let y = x + 7 in
+    ...
+

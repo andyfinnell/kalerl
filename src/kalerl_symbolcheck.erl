@@ -79,6 +79,11 @@ pass1_expr({for, Line, IteratorName, InitExpr, EndExpr, StepExpr, BodyExprs}, St
   State4 = pass1_expr(StepExpr, State3),
   State5 = lists:foldl(fun pass1_expr/2, State4, BodyExprs),
   State5#checkstate{scope = OldScopeID};
+pass1_expr({'let', Line, NameID, InitExpr, BodyExprs}, State = #checkstate{scope = OldScopeID}) ->
+  State1 = pass1_expr(InitExpr, State), %% Before var is initialized
+  State2 = define_scope_symbol(atom_to_list(NameID), Line, float, none, State1),
+  State3 = lists:foldl(fun pass1_expr/2, State2, BodyExprs),
+  State3#checkstate{scope = OldScopeID};
 pass1_expr({call, _Line, _Name, Args}, State) ->
   lists:foldl(fun pass1_expr/2, State, Args).
   
@@ -151,6 +156,12 @@ pass2_expr({for, _Line, IteratorName, InitExpr, EndExpr, StepExpr, BodyExprs}, S
   State4 = pass2_expr(StepExpr, State3),
   State5 = lists:foldl(fun pass2_expr/2, State4, BodyExprs),
   State5#checkstate{scope = OldScopeID};
+pass2_expr({'let', _Line, NameID, InitExpr, BodyExprs}, State = #checkstate{scope = OldScopeID, table = Table}) ->
+  State1 = pass2_expr(InitExpr, State), %% Before var is initialized
+  {ok, Symbol} = kalerl_symboltable:find_symbol(NameID, OldScopeID, Table),
+  State2 = State1#checkstate{scope = kalerl_symbol:defined_scope(Symbol)},
+  State3 = lists:foldl(fun pass2_expr/2, State2, BodyExprs),
+  State3#checkstate{scope = OldScopeID};
 pass2_expr({call, Line, Name, Args}, State = #checkstate{scope = ScopeID, table = Table, errors = Errors}) ->
   FunctionID = list_to_atom(Name),
   case kalerl_symboltable:find_symbol_recursive(FunctionID, ScopeID, Table) of
