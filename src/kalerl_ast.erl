@@ -16,6 +16,8 @@
   | kalerl_variable()
   %% variant for a binary operator. *)
   | {binary, kalerl_lineno(), atom(), kalerl_expr(), kalerl_expr()}
+  %% variant for a unary operator. *)
+  | {unary, kalerl_lineno(), atom(), kalerl_expr()}
   %% control flow
   | {'if', kalerl_lineno(), kalerl_expr(), [kalerl_expr()], [kalerl_expr()]}
   %% loop
@@ -25,7 +27,8 @@
 
 %% Function prototype. Name and arguments
 -type kalerl_proto() :: {prototype, kalerl_lineno(), string(), [kalerl_variable()]}
-  | {binop_prototype, kalerl_lineno(), atom(), integer(), left | right, [kalerl_variable()]}.
+  | {binop_prototype, kalerl_lineno(), atom(), integer(), left | right, [kalerl_variable()]}
+  | {unary_prototype, kalerl_lineno(), atom(), [kalerl_variable()]}.
 
 %% Function definition
 -type kalerl_func() :: {function, kalerl_lineno(), kalerl_proto(), [kalerl_expr()], atom() | none}.
@@ -36,9 +39,13 @@
 prototype_name({prototype, _Line, Name, _FormalArgs}) ->
   Name;
 prototype_name({binop_prototype, _Line, OpID, _Precedence, _Association, _FormalArgs}) ->
-  string:concat("binary", atom_to_list(OpID)).
+  atom_to_list(OpID);
+prototype_name({unary_prototype, _Line, OpID, _FormalArgs}) ->
+  atom_to_list(OpID).
 
 prototype_args({prototype, _Line, _Name, FormalArgs}) ->
   FormalArgs;
 prototype_args({binop_prototype, _Line, _OpID, _Precedence, _Association, FormalArgs}) ->
+  FormalArgs;
+prototype_args({unary_prototype, _Line, _OpID, FormalArgs}) ->
   FormalArgs.

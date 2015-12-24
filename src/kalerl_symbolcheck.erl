@@ -18,6 +18,8 @@ module(Module) ->
   State2 = pass2_module(Module, State1),
   process_state(Module, State2).
 
+format_error({unaryop_wrong_args, OpID, ArgCount}) ->
+  io_lib:format("unary operator ~p has ~p arguments instead of 1", [OpID, ArgCount]);
 format_error({binop_wrong_args, OpID, ArgCount}) ->
   io_lib:format("binary operator ~p has ~p arguments instead of 2", [OpID, ArgCount]);
 format_error({undefined, Name}) ->
@@ -66,6 +68,8 @@ pass1_expr({variable, Line, Name}, State = #checkstate{scope = ScopeID, table = 
   end;
 pass1_expr({binary, _Line, _Op, Expr1, Expr2}, State) ->
   lists:foldl(fun pass1_expr/2, State, [Expr1, Expr2]);
+pass1_expr({unary, _Line, _Op, Expr}, State) ->
+  pass1_expr(Expr, State);
 pass1_expr({'if', _Line, ConditionExpr, TrueExprs, FalseExprs}, State) ->
   lists:foldl(fun pass1_expr/2, State, [ConditionExpr] ++ TrueExprs ++ FalseExprs);
 pass1_expr({for, Line, IteratorName, InitExpr, EndExpr, StepExpr, BodyExprs}, State = #checkstate{scope = OldScopeID}) ->
@@ -84,7 +88,13 @@ check_binop_args({binop_prototype, _Line, _OpID, _Precedence, _Association, Form
   State;
 check_binop_args({binop_prototype, Line, OpID, _Precedence, _Association, FormalArgs}, State = #checkstate{errors = Errors}) when length(FormalArgs) =/= 2 ->
   Error = {Line, ?MODULE, {binop_wrong_args, OpID, length(FormalArgs)}},
+  State#checkstate{errors = [Error | Errors]};
+check_binop_args({unary_prototype, _Line, _OpID, FormalArgs}, State) when length(FormalArgs) =:= 1 ->
+  State;
+check_binop_args({unary_prototype, Line, OpID, FormalArgs}, State = #checkstate{errors = Errors}) ->
+  Error = {Line, ?MODULE, {unaryop_wrong_args, OpID, length(FormalArgs)}},
   State#checkstate{errors = [Error | Errors]}.
+  
 
 check_type(ActualType, ExpectedType, _Line, State) when ActualType =:= ExpectedType ->
   State;
@@ -125,8 +135,12 @@ pass2_expr({number, _Line, _Number}, State) ->
   State;
 pass2_expr({variable, _Line, _Name}, State) ->
   State;
-pass2_expr({binary, _Line, _Op, Expr1, Expr2}, State) ->
-  lists:foldl(fun pass2_expr/2, State, [Expr1, Expr2]);
+pass2_expr({binary, Line, Op, Expr1, Expr2}, State) ->
+  State1 = check_binop_defined(kalerl_optable:is_builtin(Op), Op, Line, State),
+  lists:foldl(fun pass2_expr/2, State1, [Expr1, Expr2]);
+pass2_expr({unary, Line, Op, Expr}, State) ->
+  State1 = check_unaryop_defined(Op, Line, State),
+  pass2_expr(Expr, State1);
 pass2_expr({'if', _Line, ConditionExpr, TrueExprs, FalseExprs}, State) ->
   lists:foldl(fun pass2_expr/2, State, [ConditionExpr] ++ TrueExprs ++ FalseExprs);
 pass2_expr({for, _Line, IteratorName, InitExpr, EndExpr, StepExpr, BodyExprs}, State = #checkstate{scope = OldScopeID, table = Table}) ->
@@ -147,3 +161,24 @@ pass2_expr({call, Line, Name, Args}, State = #checkstate{scope = ScopeID, table 
       Error = {Line, ?MODULE, {undefined, Name}},
       State#checkstate{errors = [Error | Errors]}
   end.
+
+check_unaryop_defined(Op, Line, State = #checkstate{scope = ScopeID, table = Table, errors = Errors}) ->
+  case kalerl_symboltable:find_symbol_recursive(Op, ScopeID, Table) of
+    {ok, Symbol} -> 
+      check_type(kalerl_symbol:type(Symbol), {function, 1}, Line, State);
+    error ->
+      Error = {Line, ?MODULE, {undefined, atom_to_list(Op)}},
+      State#checkstate{errors = [Error | Errors]}
+  end.
+  
+check_binop_defined(true, _Op, _Line, State) ->
+  State;
+check_binop_defined(false, Op, Line, State = #checkstate{scope = ScopeID, table = Table, errors = Errors}) ->
+  case kalerl_symboltable:find_symbol_recursive(Op, ScopeID, Table) of
+    {ok, Symbol} -> 
+      check_type(kalerl_symbol:type(Symbol), {function, 2}, Line, State);
+    error ->
+      Error = {Line, ?MODULE, {undefined, atom_to_list(Op)}},
+      State#checkstate{errors = [Error | Errors]}
+  end.
+  

@@ -53,6 +53,9 @@ expr({variable, Line, Name}, _State) ->
   {var, Line, list_to_atom(Name)};
 expr(E = {binary, _Line, Op, _Expr1, _Expr2}, State) ->
   binary_op(kalerl_optable:is_builtin(Op), E, State);
+expr({unary, Line, Op, Expr}, State) ->
+  OpID = op_name_mangle("unary_", Op),
+  {call, Line, {atom, Line, OpID}, [expr(Expr, State)]};
 expr({'if', Line, ConditionExpr, TrueExprs, FalseExprs}, State) ->
   FalseClause = {clause, Line, [{float, Line, 0.0}], [], body(FalseExprs, State)},
   TrueClause = {clause, Line, [{var, Line, '_'}], [], body(TrueExprs, State)},
@@ -92,14 +95,14 @@ expr({call, Line, Name, Args}, State = #genstate{scope = Scope, table = Table}) 
 binary_op(true, {binary, Line, Op, Expr1, Expr2}, State) ->
   convert_operator_result(Op, Line, {op, Line, Op, expr(Expr1, State), expr(Expr2, State)});
 binary_op(false, {binary, Line, Op, Expr1, Expr2}, State) ->
-  OpID = binary_op_name_mangle(Op),
+  OpID = op_name_mangle("binary_", Op),
   {call, Line, {atom, Line, OpID}, body([Expr1, Expr2], State)}.
 
-binary_op_name_mangle(Op) ->
+op_name_mangle(Prefix, Op) ->
   ToHex = fun (I) -> integer_to_list(I, 16) end,
   SafeOp = lists:flatten(lists:map(ToHex, atom_to_list(Op))),
-  list_to_atom(string:concat("binary_", SafeOp)).
-  
+  list_to_atom(string:concat(Prefix, SafeOp)).
+
 convert_operator_result('<', Line, ExprForm) ->
   %% Our little language has to return float for all operators
   FalseClause = {clause, Line, [{atom, Line, false}], [], [{float, Line, 0.0}]},
@@ -111,7 +114,9 @@ convert_operator_result(_Op, _Line, Form) ->
 prototype_name_mangle({prototype, _Line, Name, _FormalArgs}) ->
   list_to_atom(Name);
 prototype_name_mangle({binop_prototype, _Line, Op, _Precedence, _Association, _FormalArgs}) ->
-  binary_op_name_mangle(Op).
+  op_name_mangle("binary_", Op);
+prototype_name_mangle({unary_prototype, _Line, Op, _FormalArgs}) ->
+  op_name_mangle("unary_", Op).
 
 
 %% TODO: code generation

@@ -1,10 +1,10 @@
 Nonterminals 
 expression primary_expr number_expr paren_expr identifier_expr identifier_list
 bin_op_rhs bin_op_rhs_list prototype definition external toplevel_list toplevel
-argument_expr_list if_expr for_expr for_step operator_precedence.
+argument_expr_list if_expr for_expr for_step operator_precedence unary_expr.
 
 Terminals '(' ')' ',' '=' 'if' else then for in
-operator def extern ident number binary.
+operator def extern ident number binary unary.
 
 Rootsymbol toplevel_list.
 
@@ -15,8 +15,11 @@ toplevel -> expression                    : {toplevel, [], ['$1']}.
 toplevel -> definition                    : {toplevel, ['$1'], []}.
 toplevel -> external                      : {toplevel, ['$1'], []}.
 
-expression -> primary_expr                : '$1'.
-expression -> primary_expr bin_op_rhs_list : binop_finalize(binop_shunt(binop_push_expr('$1', '$2'))).
+expression -> unary_expr                  : '$1'.
+expression -> unary_expr bin_op_rhs_list  : binop_finalize(binop_shunt(binop_push_expr('$1', '$2'))).
+
+unary_expr -> operator primary_expr         : {unary, line('$1'), unwrap('$1'), '$2'}.
+unary_expr -> primary_expr                  : '$1'.
 
 primary_expr -> identifier_expr             : '$1'.
 primary_expr -> number_expr                 : '$1'.
@@ -41,12 +44,13 @@ for_expr -> for ident '=' expression ',' expression for_step in expression : {fo
 for_step -> '$empty'                        : {number, 0, 1.0}.
 for_step -> ',' expression                  : '$2'.
 
-bin_op_rhs -> operator primary_expr         : {unwrap('$1'), line('$1'), '$2'}.
+bin_op_rhs -> operator unary_expr           : {unwrap('$1'), line('$1'), '$2'}.
 bin_op_rhs_list -> bin_op_rhs               : binop_push_op('$1', {[], []}).
 bin_op_rhs_list -> bin_op_rhs bin_op_rhs_list : binop_shunt(binop_push_op('$1', '$2')).
 
 prototype -> ident '(' identifier_list ')'  : {prototype, line('$1'), unwrap('$1'), '$3'}.
 prototype -> binary operator operator_precedence '(' identifier_list ')' : binop_register(unwrap('$2'), '$3'), {binop_prototype, line('$1'), unwrap('$2'), '$3', left, '$5'}.
+prototype -> unary operator '(' identifier_list ')'  : {unary_prototype, line('$1'), unwrap('$2'), '$4'}.
 
 operator_precedence -> '$empty'             : 30.
 operator_precedence -> number               : trunc(unwrap('$1')).
@@ -125,8 +129,8 @@ binop_associate(Op) ->
 
 -spec binop_register(binop(), integer()) -> ok.
 binop_register(Op, Precedence) ->
-  kalerl_optable:add_operator(Op, Precedence, left, self()).
-
+  kalerl_optable:add_operator(Op, Precedence, left, self()).  
+  
 -type toplevel() :: {toplevel, [kalerl_ast:kalerl_func()], [kalerl_ast:kalerl_expr()]}.
 -spec toplevel_merge(toplevel(), toplevel()) -> toplevel().
 toplevel_merge({toplevel, NewFuncs, NewExprs}, {toplevel, ExistingFuncs, ExistingExprs}) ->

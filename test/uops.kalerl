@@ -1,0 +1,16 @@
+# Logical unary not.
+def unary!(v)
+  if v then
+    0
+  else
+    1
+
+# Unary negate.
+def unary-(v)
+  0 - v
+
+def negatet(one)
+  -one
+
+def nott(one)
+  !one
