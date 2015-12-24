@@ -4,6 +4,8 @@
 
 An Erlang implementation of the [Kaleidoscope language from the LLVM tutorial](http://llvm.org/docs/tutorial/index.html). It's not a straight port as it targets BEAM, the Erlang VM, instead of native code. The project is a work in progress for the purpose of learning how to generate code targeting BEAM.
 
+The name is pronounced "Kal-Earl," like [Kal-el](https://en.wikipedia.org/wiki/Superman)'s redneck cousin who's really into compilers.
+
 ##Dependencies
 
 * rebar
@@ -12,7 +14,7 @@ An Erlang implementation of the [Kaleidoscope language from the LLVM tutorial](h
 
 ##Build
 
-To build kalerl compiler just run make.
+To build the kalerl compiler just run make.
 
     $ make
 
@@ -46,15 +48,14 @@ Also, all kalerl modules export a `main/0` function that executes all the top le
 
 There are a few difference between kalerl and Kaleidoscope as defined by the LLVM tutorial. The most obvious is there is no REPL in kalerl; it assumes reading and writing from files.
 
-Another difference is the handling of externs. kalerl doesn't handle calling out to C functions; instead it supports calling into Erlang modules. To accomplish that the language syntax changed to support designating the external module name. For example:
-
-    extern foo(a) in bar
-    
-declares that there is a function `foo/1` in module `bar`. After this declaration, kalerl code can call `foo/1` like any other kalerl function and it will do the right thing.
-
 One major deviation from the original Kaleidoscope language is the lack of mutability. BEAM/Erlang doesn't support it (mostly, kinda), so it doesn't make sense for kalerl to either. This means kalerl remains a functional language. Because of the lack of mutability, the `var/in` construct in Kaleidoscope becomes a `let/in` and kalerl does not implement an assignment operator. An example of a kalerl `let/in`:
 
     let x = 3 + 4 * 5 in
     let y = x + 7 in
     ...
 
+Another difference is the handling of externs. kalerl doesn't handle calling out to C functions; instead it supports calling into Erlang modules. To accomplish that the language syntax changed to support designating the external module name. For example:
+
+    extern foo(a) in bar
+    
+declares that there is a function `foo/1` in module `bar`. After this declaration, kalerl code can call `foo/1` like any other kalerl function and it will do the right thing.
