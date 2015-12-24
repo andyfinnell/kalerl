@@ -20,18 +20,21 @@ module({module, Line, ModuleName, Functions}, Scope, SymbolTable) ->
 
 functions([], Accumulator, _State) ->
   Accumulator;
-functions([{function, _Line, {prototype, _Line, _Name, _Args}, _Exprs, Module} | Rest], Accumulator, State) when Module =/= none ->
+functions([{function, _Line, _Prototype, _Exprs, Module} | Rest], Accumulator, State) when Module =/= none ->
   %% Skip over extern prototypes
   functions(Rest, Accumulator, State);
 functions([Function | Rest], Accumulator, State) ->
   functions(Rest, [function(Function, State) | Accumulator], State).
 
-function(F = {function, Line, {prototype, _Line, Name, Args}, _Exprs, _Module}, State=#genstate{scope = Scope, table = Table}) ->
+function(F = {function, Line, Prototype, _Exprs, _Module}, State=#genstate{scope = Scope, table = Table}) ->
+  Name = kalerl_ast:prototype_name(Prototype),
+  Args = kalerl_ast:prototype_args(Prototype),
   {ok, Symbol} = kalerl_symboltable:find_symbol(list_to_atom(Name), Scope, Table),
   FunState = State#genstate{scope = kalerl_symbol:defined_scope(Symbol)},
-  {function, Line, list_to_atom(Name), length(Args), [function_clause(F, FunState)]}.
+  {function, Line, prototype_name_mangle(Prototype), length(Args), [function_clause(F, FunState)]}.
 
-function_clause({function, Line, {prototype, _Line, _Name, Args}, Exprs, _Module}, State) ->
+function_clause({function, Line, Prototype, Exprs, _Module}, State) ->
+  Args = kalerl_ast:prototype_args(Prototype),
   {clause, Line, pattern_sequence(Args), [], body(Exprs, State)}.
 
 pattern_sequence(Args) ->
@@ -48,8 +51,8 @@ expr({number, Line, Number}, _State) ->
   {float, Line, Number};
 expr({variable, Line, Name}, _State) ->
   {var, Line, list_to_atom(Name)};
-expr({binary, Line, Op, Expr1, Expr2}, State) ->
-  convert_operator_result(Op, Line, {op, Line, operator(Op), expr(Expr1, State), expr(Expr2, State)});
+expr(E = {binary, _Line, Op, _Expr1, _Expr2}, State) ->
+  binary_op(kalerl_optable:is_builtin(Op), E, State);
 expr({'if', Line, ConditionExpr, TrueExprs, FalseExprs}, State) ->
   FalseClause = {clause, Line, [{float, Line, 0.0}], [], body(FalseExprs, State)},
   TrueClause = {clause, Line, [{var, Line, '_'}], [], body(TrueExprs, State)},
@@ -86,10 +89,17 @@ expr({call, Line, Name, Args}, State = #genstate{scope = Scope, table = Table}) 
   end,
   {call, Line, NameExpr, body(Args, State)}.
 
-operator(Op) ->
-  %% For now, there's a 1:1 correspondence
-  Op.
+binary_op(true, {binary, Line, Op, Expr1, Expr2}, State) ->
+  convert_operator_result(Op, Line, {op, Line, Op, expr(Expr1, State), expr(Expr2, State)});
+binary_op(false, {binary, Line, Op, Expr1, Expr2}, State) ->
+  OpID = binary_op_name_mangle(Op),
+  {call, Line, {atom, Line, OpID}, body([Expr1, Expr2], State)}.
 
+binary_op_name_mangle(Op) ->
+  ToHex = fun (I) -> integer_to_list(I, 16) end,
+  SafeOp = lists:flatten(lists:map(ToHex, atom_to_list(Op))),
+  list_to_atom(string:concat("binary_", SafeOp)).
+  
 convert_operator_result('<', Line, ExprForm) ->
   %% Our little language has to return float for all operators
   FalseClause = {clause, Line, [{atom, Line, false}], [], [{float, Line, 0.0}]},
@@ -97,6 +107,12 @@ convert_operator_result('<', Line, ExprForm) ->
   {'case', Line, ExprForm, [FalseClause, TrueClause]};  
 convert_operator_result(_Op, _Line, Form) ->
   Form.
+
+prototype_name_mangle({prototype, _Line, Name, _FormalArgs}) ->
+  list_to_atom(Name);
+prototype_name_mangle({binop_prototype, _Line, Op, _Precedence, _Association, _FormalArgs}) ->
+  binary_op_name_mangle(Op).
+
 
 %% TODO: code generation
 %%  - gen the -spec forms

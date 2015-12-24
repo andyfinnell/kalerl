@@ -44,3 +44,4 @@ symbolcheck_error({error, Errors, Warnings}, Filename) ->
   {error, {[{Filename, Errors}], [{Filename, Warnings}]}};
 symbolcheck_error(Passthrough, _Filename) ->
   Passthrough.
+  

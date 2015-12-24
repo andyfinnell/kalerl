@@ -18,6 +18,8 @@ module(Module) ->
   State2 = pass2_module(Module, State1),
   process_state(Module, State2).
 
+format_error({binop_wrong_args, OpID, ArgCount}) ->
+  io_lib:format("binary operator ~p has ~p arguments instead of 2", [OpID, ArgCount]);
 format_error({undefined, Name}) ->
   io_lib:format("undefined symbol '~s'", [Name]);
 format_error({type_mismatch, ActualType, ExpectedType}) ->
@@ -39,11 +41,14 @@ pass1_module({module, _Line, _ModuleName, Functions}) ->
   State = #checkstate{table = Table, scope = ScopeID, errors = [], warnings = []},
   lists:foldl(fun pass1_function/2, State, Functions).
 
-pass1_function({function, Line, {prototype, _Line, Name, Args}, Exprs, Module}, State = #checkstate{scope = OldScopeID}) ->
+pass1_function({function, Line, Prototype, Exprs, Module}, State = #checkstate{scope = OldScopeID}) ->
+  Name = kalerl_ast:prototype_name(Prototype),
+  Args = kalerl_ast:prototype_args(Prototype),
   State1 = define_scope_symbol(Name, Line, {function, length(Args)}, Module, State),  
   State2 = lists:foldl(fun pass1_parameter/2, State1, Args),
   State3 = lists:foldl(fun pass1_expr/2, State2, Exprs),
-  State3#checkstate{scope = OldScopeID}.
+  State4 = check_binop_args(Prototype, State3),
+  State4#checkstate{scope = OldScopeID}.
   
 pass1_parameter({variable, Line, Name}, State) ->
   define_symbol(Name, Line, float, none, none, State).  
@@ -72,6 +77,14 @@ pass1_expr({for, Line, IteratorName, InitExpr, EndExpr, StepExpr, BodyExprs}, St
   State5#checkstate{scope = OldScopeID};
 pass1_expr({call, _Line, _Name, Args}, State) ->
   lists:foldl(fun pass1_expr/2, State, Args).
+  
+check_binop_args({prototype, _Line, _Name, _FormalArgs}, State) ->
+  State;
+check_binop_args({binop_prototype, _Line, _OpID, _Precedence, _Association, FormalArgs}, State) when length(FormalArgs) =:= 2 ->
+  State;
+check_binop_args({binop_prototype, Line, OpID, _Precedence, _Association, FormalArgs}, State = #checkstate{errors = Errors}) when length(FormalArgs) =/= 2 ->
+  Error = {Line, ?MODULE, {binop_wrong_args, OpID, length(FormalArgs)}},
+  State#checkstate{errors = [Error | Errors]}.
 
 check_type(ActualType, ExpectedType, _Line, State) when ActualType =:= ExpectedType ->
   State;
@@ -101,8 +114,8 @@ define_symbol(Name, Line, Type, DefinedScope, Module, State = #checkstate{scope 
 pass2_module({module, _Line, _ModuleName, Functions}, State) ->
   lists:foldl(fun pass2_function/2, State, Functions).
 
-pass2_function({function, _Line, {prototype, _Line, Name, _Args}, Exprs, _Module}, State = #checkstate{scope = OldScopeID, table = Table}) ->
-  FunctionID = list_to_atom(Name),
+pass2_function({function, _Line, Prototype, Exprs, _Module}, State = #checkstate{scope = OldScopeID, table = Table}) ->
+  FunctionID = list_to_atom(kalerl_ast:prototype_name(Prototype)),
   {ok, Symbol} = kalerl_symboltable:find_symbol(FunctionID, OldScopeID, Table),
   State1 = State#checkstate{scope = kalerl_symbol:defined_scope(Symbol)},
   State2 = lists:foldl(fun pass2_expr/2, State1, Exprs),

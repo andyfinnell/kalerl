@@ -1,10 +1,10 @@
 Nonterminals 
 expression primary_expr number_expr paren_expr identifier_expr identifier_list
 bin_op_rhs bin_op_rhs_list prototype definition external toplevel_list toplevel
-argument_expr_list if_expr for_expr for_step.
+argument_expr_list if_expr for_expr for_step operator_precedence.
 
 Terminals '(' ')' ',' '=' 'if' else then for in
-operator def extern ident number.
+operator def extern ident number binary.
 
 Rootsymbol toplevel_list.
 
@@ -46,6 +46,10 @@ bin_op_rhs_list -> bin_op_rhs               : binop_push_op('$1', {[], []}).
 bin_op_rhs_list -> bin_op_rhs bin_op_rhs_list : binop_shunt(binop_push_op('$1', '$2')).
 
 prototype -> ident '(' identifier_list ')'  : {prototype, line('$1'), unwrap('$1'), '$3'}.
+prototype -> binary operator operator_precedence '(' identifier_list ')' : binop_register(unwrap('$2'), '$3'), {binop_prototype, line('$1'), unwrap('$2'), '$3', left, '$5'}.
+
+operator_precedence -> '$empty'             : 30.
+operator_precedence -> number               : trunc(unwrap('$1')).
 
 identifier_list -> ident identifier_list    : [{variable, line('$1'), unwrap('$1')} | '$2'].
 identifier_list -> '$empty'                 : [].
@@ -119,13 +123,23 @@ binop_precedence(Op) ->
 binop_associate(Op) -> 
   kalerl_optable:association(Op, self()).
 
--type toplevel() :: {toplevel, [kalerl_ast:kalerl_func() | kalerl_ast:kalerl_proto()], [kalerl_ast:kalerl_expr()]}.
+-spec binop_register(binop(), integer()) -> ok.
+binop_register(Op, Precedence) ->
+  kalerl_optable:add_operator(Op, Precedence, left, self()).
+
+-type toplevel() :: {toplevel, [kalerl_ast:kalerl_func()], [kalerl_ast:kalerl_expr()]}.
 -spec toplevel_merge(toplevel(), toplevel()) -> toplevel().
 toplevel_merge({toplevel, NewFuncs, NewExprs}, {toplevel, ExistingFuncs, ExistingExprs}) ->
   {toplevel, ExistingFuncs ++ NewFuncs, ExistingExprs ++ NewExprs}.
   
 -spec toplevel_to_module(toplevel(), string()) -> {ok, kalerl_ast:kalerl_module()}.
 toplevel_to_module({toplevel, Funcs, MainExprs}, ModuleName) ->
-  Main = {function, 1, {prototype, 1, "main", []}, MainExprs, none},
+  Main = {function, 1, {prototype, 1, "main", []}, main_exprs(MainExprs), none},
   {ok, {module, 1, ModuleName, Funcs ++ [Main]}}.
+
+-spec main_exprs([kalerl_ast:kalerl_expr()]) -> [kalerl_ast:kalerl_expr()].
+main_exprs([]) ->
+  [{number, 1, 1.0}];
+main_exprs(MainExprs) ->
+  MainExprs.
 

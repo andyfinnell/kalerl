@@ -34,6 +34,7 @@ validate_ident(Line, "else") -> {else, Line};
 validate_ident(Line, "then") -> {then, Line};
 validate_ident(Line, "for") -> {for, Line};
 validate_ident(Line, "in") -> {in, Line};
+validate_ident(Line, "binary") -> {binary, Line};
 validate_ident(Line, Characters) -> {ident, Line, Characters}.
 
 -spec validate_number(lineno(), string()) -> kalerl_token().

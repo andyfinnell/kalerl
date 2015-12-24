@@ -3,6 +3,8 @@
 
 -module(kalerl_ast).
 
+-export([prototype_name/1, prototype_args/1]).
+
 -type kalerl_lineno() :: integer().
 -type kalerl_variable() :: {variable, kalerl_lineno(), string()}.
 
@@ -20,12 +22,23 @@
   | {for, kalerl_lineno(), string(), kalerl_expr(), kalerl_expr(), kalerl_expr(), [kalerl_expr()]}
   %% variant for function calls. *)
   | {call, kalerl_lineno(), string(), [kalerl_expr()]}.
-  
+
 %% Function prototype. Name and arguments
--type kalerl_proto() :: {prototype, kalerl_lineno(), string(), [kalerl_variable()]}.
+-type kalerl_proto() :: {prototype, kalerl_lineno(), string(), [kalerl_variable()]}
+  | {binop_prototype, kalerl_lineno(), atom(), integer(), left | right, [kalerl_variable()]}.
 
 %% Function definition
 -type kalerl_func() :: {function, kalerl_lineno(), kalerl_proto(), [kalerl_expr()], atom() | none}.
 
 -type kalerl_module() :: {module, kalerl_lineno(), string(), [kalerl_func()]}.
 -export_type([kalerl_expr/0, kalerl_proto/0, kalerl_func/0, kalerl_module/0, kalerl_lineno/0]).
+
+prototype_name({prototype, _Line, Name, _FormalArgs}) ->
+  Name;
+prototype_name({binop_prototype, _Line, OpID, _Precedence, _Association, _FormalArgs}) ->
+  string:concat("binary", atom_to_list(OpID)).
+
+prototype_args({prototype, _Line, _Name, FormalArgs}) ->
+  FormalArgs;
+prototype_args({binop_prototype, _Line, _OpID, _Precedence, _Association, FormalArgs}) ->
+  FormalArgs.
